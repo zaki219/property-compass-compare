@@ -49,5 +49,14 @@ export interface PropertyFilters {
   propertyType?: string;
   yearBuiltMin?: number;
   yearBuiltMax?: number;
+  dateFrom?: Date;
+  dateTo?: Date;
   search?: string;
+}
+
+export interface ExportOptions {
+  format: 'csv' | 'excel' | 'pdf';
+  columns: string[];
+  properties: Property[];
+  filters: PropertyFilters;
 }

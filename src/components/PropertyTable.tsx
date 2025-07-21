@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Eye } from 'lucide-react';
-import { Property } from '@/types/property';
+import { ArrowUpDown, ArrowUp, ArrowDown, Eye } from 'lucide-react';
+import { Property, PropertyFilters } from '@/types/property';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { ExportModal } from './ExportModal';
 import { cn } from '@/lib/utils';
 
 interface PropertyTableProps {
   properties: Property[];
+  filters?: PropertyFilters;
   className?: string;
 }
 
 type SortField = keyof Property;
 type SortDirection = 'asc' | 'desc' | null;
 
-export function PropertyTable({ properties, className }: PropertyTableProps) {
+export function PropertyTable({ properties, filters = {}, className }: PropertyTableProps) {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
@@ -123,10 +125,7 @@ export function PropertyTable({ properties, className }: PropertyTableProps) {
         <div className="text-sm text-muted-foreground">
           Comparing {properties.length} {properties.length === 1 ? 'property' : 'properties'}
         </div>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        <ExportModal properties={properties} filters={filters} />
       </div>
 
       {/* Table */}

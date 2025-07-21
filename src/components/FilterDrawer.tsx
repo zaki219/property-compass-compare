@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { FilterOptions, PropertyFilters } from '@/types/property';
+import { DateRangePicker } from './DateRangePicker';
 import { cn } from '@/lib/utils';
 
 interface FilterDrawerProps {
@@ -132,9 +133,25 @@ export function FilterDrawer({
                 </Button>
               </Badge>
             )}
-            {activeFilterCount > 4 && (
+            {(filters.dateFrom || filters.dateTo) && (
               <Badge variant="secondary" className="text-xs">
-                +{activeFilterCount - 4} more
+                Date Range
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    removeFilter('dateFrom');
+                    removeFilter('dateTo');
+                  }}
+                  className="h-3 w-3 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <X className="h-2 w-2" />
+                </Button>
+              </Badge>
+            )}
+            {activeFilterCount > 5 && (
+              <Badge variant="secondary" className="text-xs">
+                +{activeFilterCount - 5} more
               </Badge>
             )}
           </div>
@@ -157,6 +174,9 @@ export function FilterDrawer({
         <SheetContent className="w-80 sm:w-96">
           <SheetHeader>
             <SheetTitle>Filter Properties</SheetTitle>
+            <SheetDescription>
+              Apply filters to narrow down your property search and analysis
+            </SheetDescription>
           </SheetHeader>
           
           <div className="mt-6 space-y-6">
@@ -246,6 +266,22 @@ export function FilterDrawer({
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="space-y-4">
+              <h4 className="font-medium">Time Frame</h4>
+              <DateRangePicker
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+                onDateChange={(dateFrom, dateTo) => {
+                  onFiltersChange({
+                    ...filters,
+                    dateFrom,
+                    dateTo
+                  });
+                }}
+              />
             </div>
 
             {/* Fund Filters */}

@@ -109,7 +109,7 @@ export function Dashboard() {
                 </div>
               </div>
             ) : (
-              <PropertyTable properties={selectedProperties} />
+              <PropertyTable properties={selectedProperties} filters={filters} />
             )}
           </div>
 
