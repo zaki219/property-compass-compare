@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   ColumnDef,
@@ -67,6 +68,17 @@ const filterSchema = z.object({
     to: z.date().optional(),
   }).optional(),
 });
+
+// Define exportable columns with their display names
+const exportableColumns = [
+  { key: 'dealName', label: 'Deal Name' },
+  { key: 'propertyType', label: 'Property Type' },
+  { key: 'class', label: 'Class' },
+  { key: 'state', label: 'State' },
+  { key: 'msa', label: 'MSA' },
+  { key: 'occupancyInPlace', label: 'Occupancy' },
+  { key: 'rent', label: 'Rent' },
+];
 
 export function PropertyTable({ properties, filters, selectedPeriod }: PropertyTableProps) {
   const [columnVisibility, setColumnVisibility] = useState({});
@@ -225,26 +237,26 @@ export function PropertyTable({ properties, filters, selectedPeriod }: PropertyT
                 <FormField
                   control={form.control}
                   name="columns"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>Columns</FormLabel>
                       <div className="flex flex-col space-y-2">
-                        {columns.map((column) => (
-                          <div key={column.accessorKey} className="flex items-center space-x-2">
+                        {exportableColumns.map((column) => (
+                          <div key={column.key} className="flex items-center space-x-2">
                             <Input
                               type="checkbox"
-                              id={column.accessorKey as string}
-                            // checked={field.value?.includes(column.accessorKey as string)}
-                            // onChange={(e) => {
-                            //   if (e.target.checked) {
-                            //     field.onChange([...(field.value || []), column.accessorKey as string])
-                            //   } else {
-                            //     field.onChange(field.value?.filter((value) => value !== column.accessorKey)
-                            //     )
-                            //   }
-                            // }}
+                              id={column.key}
+                              checked={field.value?.includes(column.key) || false}
+                              onChange={(e) => {
+                                const currentValue = field.value || [];
+                                if (e.target.checked) {
+                                  field.onChange([...currentValue, column.key]);
+                                } else {
+                                  field.onChange(currentValue.filter((value) => value !== column.key));
+                                }
+                              }}
                             />
-                            <Label htmlFor={column.accessorKey as string}>{column.header}</Label>
+                            <Label htmlFor={column.key}>{column.label}</Label>
                           </div>
                         ))}
                       </div>
