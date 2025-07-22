@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, RefreshCw } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ interface PropertySearchProps {
   selectedProperties: Property[];
   onPropertySelect: (property: Property) => void;
   onPropertyRemove: (propertyId: string) => void;
+  onRefresh?: () => void;
   className?: string;
 }
 
@@ -19,10 +21,12 @@ export function PropertySearch({
   selectedProperties,
   onPropertySelect,
   onPropertyRemove,
+  onRefresh,
   className
 }: PropertySearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm.trim()) return [];
@@ -47,6 +51,14 @@ export function PropertySearch({
     const value = e.target.value;
     setSearchTerm(value);
     setIsDropdownOpen(value.trim().length > 0);
+  };
+
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      await onRefresh();
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
   };
 
   return (
@@ -85,8 +97,17 @@ export function PropertySearch({
             onChange={handleInputChange}
             onFocus={() => searchTerm.trim() && setIsDropdownOpen(true)}
             onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
-            className="pl-10"
+            className="pl-10 pr-12"
           />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          </Button>
         </div>
 
         {/* Search Results Dropdown */}

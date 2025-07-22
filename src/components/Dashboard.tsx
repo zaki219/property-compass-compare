@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Building2, BarChart3 } from 'lucide-react';
 import { Property, PropertyFilters } from '@/types/property';
@@ -7,6 +6,7 @@ import { PropertySearch } from './PropertySearch';
 import { FilterDrawer } from './FilterDrawer';
 import { PropertyTable } from './PropertyTable';
 import { QuarterSelector } from './QuarterSelector';
+import { ComparisonCharts } from './ComparisonCharts';
 import { cn } from '@/lib/utils';
 
 export function Dashboard() {
@@ -45,6 +45,12 @@ export function Dashboard() {
 
   const handleFiltersReset = () => {
     setFilters({});
+  };
+
+  const handleRefresh = async () => {
+    // Simulate refresh action - in real app, this would refetch data
+    console.log('Refreshing property data...');
+    // You can add actual refresh logic here
   };
 
   return (
@@ -99,6 +105,7 @@ export function Dashboard() {
               selectedProperties={selectedProperties}
               onPropertySelect={handlePropertySelect}
               onPropertyRemove={handlePropertyRemove}
+              onRefresh={handleRefresh}
             />
           </div>
 
@@ -121,11 +128,19 @@ export function Dashboard() {
                 </div>
               </div>
             ) : (
-              <PropertyTable 
-                properties={selectedProperties} 
-                filters={filters}
-                selectedPeriod={selectedPeriod}
-              />
+              <div className="space-y-6">
+                {/* Comparison Charts */}
+                {selectedProperties.length >= 2 && (
+                  <ComparisonCharts properties={selectedProperties} />
+                )}
+                
+                {/* Property Table */}
+                <PropertyTable 
+                  properties={selectedProperties} 
+                  filters={filters}
+                  selectedPeriod={selectedPeriod}
+                />
+              </div>
             )}
           </div>
 
