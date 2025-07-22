@@ -1,255 +1,330 @@
 import React, { useState } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, Eye } from 'lucide-react';
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getPaginationRowModel,
+  getSortedRowModel,
+} from '@tanstack/react-table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ArrowDown, ArrowUp, Download, Filter, MoreHorizontal } from 'lucide-react';
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { Label } from "@/components/ui/label"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { DateRangePicker } from './DateRangePicker';
+import { useForm } from 'react-hook-form';
+import * as z from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Property, PropertyFilters } from '@/types/property';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { ExportModal } from './ExportModal';
-import { cn } from '@/lib/utils';
 
 interface PropertyTableProps {
   properties: Property[];
-  filters?: PropertyFilters;
-  className?: string;
+  filters: PropertyFilters;
+  selectedPeriod?: {
+    type: 'quarter' | 'date' | 'month';
+    value: string;
+  };
 }
 
-type SortField = keyof Property;
-type SortDirection = 'asc' | 'desc' | null;
+const filterSchema = z.object({
+  format: z.enum(['csv', 'excel', 'pdf']).default('csv'),
+  columns: z.string().array().optional(),
+  dateRange: z.object({
+    from: z.date().optional(),
+    to: z.date().optional(),
+  }).optional(),
+});
 
-export function PropertyTable({ properties, filters = {}, className }: PropertyTableProps) {
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+export function PropertyTable({ properties, filters, selectedPeriod }: PropertyTableProps) {
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const form = useForm<z.infer<typeof filterSchema>>({
+    resolver: zodResolver(filterSchema),
+    defaultValues: {
+      format: 'csv',
+      columns: [],
+    },
+  });
 
-  const formatNumber = (value: number, decimals: number = 0): string => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(value);
-  };
-
-  const formatPercentage = (value: number): string => {
-    return `${formatNumber(value, 1)}%`;
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      if (sortDirection === 'asc') {
-        setSortDirection('desc');
-      } else if (sortDirection === 'desc') {
-        setSortDirection(null);
-        setSortField(null);
-      } else {
-        setSortDirection('asc');
-      }
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const sortedProperties = React.useMemo(() => {
-    if (!sortField || !sortDirection) return properties;
-
-    return [...properties].sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
-      
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-      
-      const aStr = String(aValue).toLowerCase();
-      const bStr = String(bValue).toLowerCase();
-      
-      if (sortDirection === 'asc') {
-        return aStr.localeCompare(bStr);
-      } else {
-        return bStr.localeCompare(aStr);
-      }
-    });
-  }, [properties, sortField, sortDirection]);
-
-  const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <Button
-      variant="ghost"
-      onClick={() => handleSort(field)}
-      className="h-auto p-0 font-medium justify-start hover:bg-transparent"
-    >
-      {children}
-      {sortField === field ? (
-        sortDirection === 'asc' ? (
-          <ArrowUp className="ml-1 h-3 w-3" />
-        ) : (
-          <ArrowDown className="ml-1 h-3 w-3" />
+  const columns: ColumnDef<Property>[] = [
+    {
+      accessorKey: 'dealName',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Deal Name
+            <ArrowUp className="h-4 w-4" />
+            <ArrowDown className="h-4 w-4" />
+          </Button>
         )
-      ) : (
-        <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-      )}
-    </Button>
-  );
+      },
+    },
+    {
+      accessorKey: 'propertyType',
+      header: "Property Type",
+    },
+    {
+      accessorKey: 'class',
+      header: "Class",
+    },
+    {
+      accessorKey: 'state',
+      header: "State",
+    },
+    {
+      accessorKey: 'msa',
+      header: "MSA",
+    },
+    {
+      accessorKey: 'occupancyInPlace',
+      header: "Occupancy",
+      cell: ({ row }) => {
+        const occupancy = row.getValue('occupancyInPlace') as number;
+        const formatted = occupancy.toFixed(1) + '%';
+        return formatted;
+      }
+    },
+    {
+      accessorKey: 'rent',
+      header: "Rent",
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const property = row.original
 
-  const getClassBadgeVariant = (classType: string) => {
-    switch (classType) {
-      case 'A': return 'default';
-      case 'B': return 'secondary';
-      case 'C': return 'outline';
-      default: return 'secondary';
-    }
-  };
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(property.id)}
+              >
+                Copy property ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>View Stats</DropdownMenuItem>
+              <DropdownMenuItem>Hide</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
 
-  if (properties.length === 0) {
-    return (
-      <div className={cn("flex flex-col items-center justify-center py-16 text-center", className)}>
-        <div className="text-muted-foreground mb-4">
-          <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <h3 className="text-lg font-medium">No Properties Selected</h3>
-          <p className="text-sm">Search and select properties above to compare their metrics side-by-side.</p>
-        </div>
-      </div>
-    );
+  const table = useReactTable({
+    data: properties,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    getSortedRowModel: getSortedRowModel(),
+    onRowSelectionChange: setRowSelection,
+    state: {
+      columnVisibility,
+      rowSelection,
+    },
+  })
+
+  const onSubmit = (data: z.infer<typeof filterSchema>) => {
+    console.log(data);
   }
 
   return (
-    <div className={cn("space-y-4", className)}>
-      {/* Actions Bar */}
+    <div className="space-y-4">
+      {/* Header with period display and export */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Comparing {properties.length} {properties.length === 1 ? 'property' : 'properties'}
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-semibold">
+            Property Comparison ({properties.length})
+          </h3>
+          {selectedPeriod && selectedPeriod.value && (
+            <div className="text-sm text-muted-foreground">
+              Period: <span className="font-medium">{selectedPeriod.value}</span>
+            </div>
+          )}
         </div>
-        <ExportModal properties={properties} filters={filters} />
+        <Sheet open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Export Options</SheetTitle>
+              <SheetDescription>
+                Customize your export settings here.
+              </SheetDescription>
+            </SheetHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <FormField
+                  control={form.control}
+                  name="format"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>File Format</FormLabel>
+                      <FormControl>
+                        <select {...field} className="border rounded px-2 py-1">
+                          <option value="csv">CSV</option>
+                          <option value="excel">Excel</option>
+                          <option value="pdf">PDF</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="columns"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Columns</FormLabel>
+                      <div className="flex flex-col space-y-2">
+                        {columns.map((column) => (
+                          <div key={column.accessorKey} className="flex items-center space-x-2">
+                            <Input
+                              type="checkbox"
+                              id={column.accessorKey as string}
+                            // checked={field.value?.includes(column.accessorKey as string)}
+                            // onChange={(e) => {
+                            //   if (e.target.checked) {
+                            //     field.onChange([...(field.value || []), column.accessorKey as string])
+                            //   } else {
+                            //     field.onChange(field.value?.filter((value) => value !== column.accessorKey)
+                            //     )
+                            //   }
+                            // }}
+                            />
+                            <Label htmlFor={column.accessorKey as string}>{column.header}</Label>
+                          </div>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit">Submit</Button>
+              </form>
+            </Form>
+          </SheetContent>
+        </Sheet>
       </div>
 
-      {/* Table */}
-      <div className="border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="sticky left-0 bg-muted/50 border-r min-w-[200px]">
-                  <SortButton field="dealName">Deal Name</SortButton>
-                </TableHead>
-                <TableHead>
-                  <SortButton field="source">Source</SortButton>
-                </TableHead>
-                <TableHead>
-                  <SortButton field="propertyType">Property Type</SortButton>
-                </TableHead>
-                <TableHead>
-                  <SortButton field="class">Class</SortButton>
-                </TableHead>
-                <TableHead>
-                  <SortButton field="propertySubType">Sub Type</SortButton>
-                </TableHead>
-                <TableHead>
-                  <SortButton field="vintage">Vintage</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="avgUnitSize">Avg Unit Size</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="occupancyPrevQ">Occupancy Prev Q</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="occupancyInPlace">Occupancy In-Place</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="occupancyStabilized">Occupancy Stabilized</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="rent">Rent</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="egi">EGI</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="reTax">RE Tax</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="insurance">Insurance</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="otherOpEx">Other OpEx</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="totalOpEx">Total OpEx</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton field="noi">NOI / NCF</SortButton>
-                </TableHead>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                    </TableHead>
+                  )
+                })}
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedProperties.map((property) => (
-                <TableRow key={property.id} className="hover:bg-muted/30">
-                  <TableCell className="sticky left-0 bg-background border-r font-medium">
-                    <div>
-                      <div className="font-medium">{property.dealName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {property.msa}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {property.source}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{property.propertyType}</TableCell>
-                  <TableCell>
-                    <Badge variant={getClassBadgeVariant(property.class)} className="text-xs">
-                      {property.class}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{property.propertySubType}</TableCell>
-                  <TableCell>{property.vintage}</TableCell>
-                  <TableCell className="financial-metric">
-                    {formatNumber(property.avgUnitSize).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatPercentage(property.occupancyPrevQ)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatPercentage(property.occupancyInPlace)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatPercentage(property.occupancyStabilized)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {property.propertyType === 'Office' || property.propertyType === 'Retail' || property.propertyType === 'Industrial' 
-                      ? `$${formatNumber(property.rent, 2)}/SF` 
-                      : formatCurrency(property.rent)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatCurrency(property.egi)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatCurrency(property.reTax)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatCurrency(property.insurance)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatCurrency(property.otherOpEx)}
-                  </TableCell>
-                  <TableCell className="financial-metric">
-                    {formatCurrency(property.totalOpEx)}
-                  </TableCell>
-                  <TableCell className="financial-metric font-semibold">
-                    {formatCurrency(property.noi)}
-                  </TableCell>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-between space-x-2 py-2">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {table.getFilteredRowModel().rows.length} of {table.getCoreRowModel().rows.length} row(s)
+        </div>
+        <div className="space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
         </div>
       </div>
     </div>

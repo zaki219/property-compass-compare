@@ -1,14 +1,14 @@
-import React from 'react';
-import { Filter, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Input } from '@/components/ui/input';
-import { FilterOptions, PropertyFilters } from '@/types/property';
+import { Slider } from "@/components/ui/slider"
+import { Badge } from "@/components/ui/badge"
 import { DateRangePicker } from './DateRangePicker';
-import { cn } from '@/lib/utils';
+import { PropertyFilters, FilterOptions } from '@/types/property';
 
 interface FilterDrawerProps {
   filterOptions: FilterOptions;
@@ -16,316 +16,210 @@ interface FilterDrawerProps {
   onFiltersChange: (filters: PropertyFilters) => void;
   onReset: () => void;
   resultCount: number;
-  className?: string;
 }
 
-export function FilterDrawer({
-  filterOptions,
-  filters,
-  onFiltersChange,
-  onReset,
-  resultCount,
-  className
-}: FilterDrawerProps) {
-  const activeFilterCount = Object.values(filters).filter(value => 
-    value !== undefined && value !== '' && value !== null
-  ).length;
+export function FilterDrawer({ filterOptions, filters, onFiltersChange, onReset, resultCount }: FilterDrawerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState<PropertyFilters>(filters);
 
-  const handleFilterChange = (key: keyof PropertyFilters, value: any) => {
-    onFiltersChange({
-      ...filters,
-      [key]: value === '' ? undefined : value
-    });
+  useEffect(() => {
+    setTempFilters(filters);
+  }, [filters]);
+
+  const handleApplyFilters = () => {
+    onFiltersChange(tempFilters);
+    setIsOpen(false);
   };
 
-  const removeFilter = (key: keyof PropertyFilters) => {
-    const newFilters = { ...filters };
-    delete newFilters[key];
-    onFiltersChange(newFilters);
+  const handleResetFilters = () => {
+    setTempFilters({});
+    onReset();
   };
 
-  const FilterSelect = ({ 
-    label, 
-    value, 
-    onValueChange, 
-    options, 
-    placeholder 
-  }: {
-    label: string;
-    value?: string | number;
-    onValueChange: (value: string) => void;
-    options: (string | number)[];
-    placeholder: string;
-  }) => (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium">{label}</Label>
-      <Select value={value?.toString() || ''} onValueChange={onValueChange}>
-        <SelectTrigger>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.toString()} value={option.toString()}>
-              {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
+  const activeFilterCount = Object.keys(tempFilters).length;
+
+  const handleFilterChange = (filterKey: keyof PropertyFilters, value: any) => {
+    setTempFilters(prev => ({ ...prev, [filterKey]: value }));
+  };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      {/* Active Filters Display */}
-      {activeFilterCount > 0 && (
-        <div className="flex items-center gap-2 mr-4">
-          <span className="text-sm text-muted-foreground">Filters:</span>
-          <div className="flex flex-wrap gap-1">
-            {filters.country && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.country}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFilter('country')}
-                  className="h-3 w-3 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X className="h-2 w-2" />
-                </Button>
-              </Badge>
-            )}
-            {filters.state && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.state}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFilter('state')}
-                  className="h-3 w-3 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X className="h-2 w-2" />
-                </Button>
-              </Badge>
-            )}
-            {filters.propertyType && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.propertyType}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFilter('propertyType')}
-                  className="h-3 w-3 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X className="h-2 w-2" />
-                </Button>
-              </Badge>
-            )}
-            {filters.class && (
-              <Badge variant="secondary" className="text-xs">
-                Class {filters.class}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFilter('class')}
-                  className="h-3 w-3 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X className="h-2 w-2" />
-                </Button>
-              </Badge>
-            )}
-            {(filters.dateFrom || filters.dateTo) && (
-              <Badge variant="secondary" className="text-xs">
-                Date Range
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    removeFilter('dateFrom');
-                    removeFilter('dateTo');
-                  }}
-                  className="h-3 w-3 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X className="h-2 w-2" />
-                </Button>
-              </Badge>
-            )}
-            {activeFilterCount > 5 && (
-              <Badge variant="secondary" className="text-xs">
-                +{activeFilterCount - 5} more
-              </Badge>
-            )}
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button variant="outline" className="gap-2">
+          <Filter className="h-4 w-4" />
+          Filters
+          {activeFilterCount > 0 && (
+            <Badge variant="secondary" className="ml-1">
+              {activeFilterCount}
+            </Badge>
+          )}
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-96">
+        <SheetHeader>
+          <SheetTitle>Filter Properties</SheetTitle>
+          <SheetDescription>
+            Refine your property search with these filters
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="py-6 space-y-6">
+          {/* Geography Filters */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm">Geography</h4>
+            
+            {/* Country */}
+            <div className="space-y-2">
+              <Label htmlFor="country" className="text-sm">Country</Label>
+              <Select onValueChange={(value) => handleFilterChange('country', value)}>
+                <SelectTrigger id="country">
+                  <SelectValue placeholder="Select a country" defaultValue={filters.country} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.countries.map(country => (
+                    <SelectItem key={country} value={country}>{country}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* State */}
+            <div className="space-y-2">
+              <Label htmlFor="state" className="text-sm">State</Label>
+              <Select onValueChange={(value) => handleFilterChange('state', value)}>
+                <SelectTrigger id="state">
+                  <SelectValue placeholder="Select a state" defaultValue={filters.state} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.states.map(state => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* MSA */}
+            <div className="space-y-2">
+              <Label htmlFor="msa" className="text-sm">MSA</Label>
+              <Select onValueChange={(value) => handleFilterChange('msa', value)}>
+                <SelectTrigger id="msa">
+                  <SelectValue placeholder="Select an MSA" defaultValue={filters.msa} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.msas.map(msa => (
+                    <SelectItem key={msa} value={msa}>{msa}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Filter Button & Sheet */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {activeFilterCount}
-              </Badge>
-            )}
-          </Button>
-        </SheetTrigger>
-        <SheetContent className="w-80 sm:w-96">
-          <SheetHeader>
-            <SheetTitle>Filter Properties</SheetTitle>
-            <SheetDescription>
-              Apply filters to narrow down your property search and analysis
-            </SheetDescription>
-          </SheetHeader>
-          
-          <div className="mt-6 space-y-6">
-            {/* Result Count */}
-            <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
-              <strong>{resultCount}</strong> properties match your criteria
+          {/* Property Filters */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm">Property Details</h4>
+            
+            {/* Property Type */}
+            <div className="space-y-2">
+              <Label htmlFor="propertyType" className="text-sm">Property Type</Label>
+              <Select onValueChange={(value) => handleFilterChange('propertyType', value)}>
+                <SelectTrigger id="propertyType">
+                  <SelectValue placeholder="Select a property type" defaultValue={filters.propertyType} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.propertyTypes.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Geographic Filters */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Geographic</h4>
-              
-              <FilterSelect
-                label="Country"
-                value={filters.country}
-                onValueChange={(value) => handleFilterChange('country', value)}
-                options={filterOptions.countries}
-                placeholder="Select country"
-              />
-              
-              <FilterSelect
-                label="State"
-                value={filters.state}
-                onValueChange={(value) => handleFilterChange('state', value)}
-                options={filterOptions.states}
-                placeholder="Select state"
-              />
-              
-              <FilterSelect
-                label="MSA"
-                value={filters.msa}
-                onValueChange={(value) => handleFilterChange('msa', value)}
-                options={filterOptions.msas}
-                placeholder="Select MSA"
-              />
+            {/* Class */}
+            <div className="space-y-2">
+              <Label htmlFor="class" className="text-sm">Class</Label>
+              <Select onValueChange={(value) => handleFilterChange('class', value)}>
+                <SelectTrigger id="class">
+                  <SelectValue placeholder="Select a class" defaultValue={filters.class} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.classes.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Property Filters */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Property Details</h4>
-              
-              <FilterSelect
-                label="Property Type"
-                value={filters.propertyType}
-                onValueChange={(value) => handleFilterChange('propertyType', value)}
-                options={filterOptions.propertyTypes}
-                placeholder="Select type"
-              />
-              
-              <FilterSelect
-                label="Class"
-                value={filters.class}
-                onValueChange={(value) => handleFilterChange('class', value)}
-                options={filterOptions.classes}
-                placeholder="Select class"
-              />
-              
-              <FilterSelect
-                label="Asset Type"
-                value={filters.assetType}
-                onValueChange={(value) => handleFilterChange('assetType', value)}
-                options={filterOptions.assetTypes}
-                placeholder="Select asset type"
-              />
+            {/* Asset Type */}
+            <div className="space-y-2">
+              <Label htmlFor="assetType" className="text-sm">Asset Type</Label>
+              <Select onValueChange={(value) => handleFilterChange('assetType', value)}>
+                <SelectTrigger id="assetType">
+                  <SelectValue placeholder="Select an asset type" defaultValue={filters.assetType} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.assetTypes.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Year Built Range */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Year Built</h4>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label className="text-sm">Min Year</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 2000"
-                    value={filters.yearBuiltMin || ''}
-                    onChange={(e) => handleFilterChange('yearBuiltMin', e.target.value ? parseInt(e.target.value) : undefined)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm">Max Year</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 2024"
-                    value={filters.yearBuiltMax || ''}
-                    onChange={(e) => handleFilterChange('yearBuiltMax', e.target.value ? parseInt(e.target.value) : undefined)}
-                  />
-                </div>
+            {/* Fund */}
+            <div className="space-y-2">
+              <Label htmlFor="fund" className="text-sm">Fund</Label>
+              <Select onValueChange={(value) => handleFilterChange('fund', value)}>
+                <SelectTrigger id="fund">
+                  <SelectValue placeholder="Select a fund" defaultValue={filters.fund} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.funds.map(fund => (
+                    <SelectItem key={fund} value={fund}>{fund}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Year Built Range */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm">Year Built Range</h4>
+            <div className="flex items-center space-x-2">
+              <div>
+                <Label htmlFor="yearBuiltMin" className="text-xs">Min Year</Label>
+                <Input
+                  type="number"
+                  id="yearBuiltMin"
+                  placeholder="Min Year"
+                  className="w-24"
+                  value={tempFilters.yearBuiltMin || ''}
+                  onChange={(e) => handleFilterChange('yearBuiltMin', parseInt(e.target.value))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="yearBuiltMax" className="text-xs">Max Year</Label>
+                <Input
+                  type="number"
+                  id="yearBuiltMax"
+                  placeholder="Max Year"
+                  className="w-24"
+                  value={tempFilters.yearBuiltMax || ''}
+                  onChange={(e) => handleFilterChange('yearBuiltMax', parseInt(e.target.value))}
+                />
               </div>
             </div>
-
-            {/* Date Range Filter */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Time Frame</h4>
-              <DateRangePicker
-                dateFrom={filters.dateFrom}
-                dateTo={filters.dateTo}
-                onDateChange={(dateFrom, dateTo) => {
-                  onFiltersChange({
-                    ...filters,
-                    dateFrom,
-                    dateTo
-                  });
-                }}
-              />
-            </div>
-
-            {/* Fund Filters */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Investment</h4>
-              
-              <FilterSelect
-                label="Fund"
-                value={filters.fund}
-                onValueChange={(value) => handleFilterChange('fund', value)}
-                options={filterOptions.funds}
-                placeholder="Select fund"
-              />
-              
-              <FilterSelect
-                label="Year"
-                value={filters.year}
-                onValueChange={(value) => handleFilterChange('year', parseInt(value))}
-                options={filterOptions.years}
-                placeholder="Select year"
-              />
-              
-              <FilterSelect
-                label="Month"
-                value={filters.month}
-                onValueChange={(value) => handleFilterChange('month', value)}
-                options={filterOptions.months}
-                placeholder="Select month"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t">
-              <Button 
-                variant="outline" 
-                onClick={onReset}
-                className="flex-1"
-              >
-                Reset All
-              </Button>
-            </div>
           </div>
-        </SheetContent>
-      </Sheet>
-    </div>
+
+          {/* Note: Removed Date Range Picker as it's now handled by QuarterSelector */}
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button onClick={handleApplyFilters} className="flex-1">
+            Apply Filters ({resultCount} results)
+          </Button>
+          <Button variant="outline" onClick={handleResetFilters}>
+            Reset
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

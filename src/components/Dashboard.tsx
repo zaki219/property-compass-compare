@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Building2, BarChart3 } from 'lucide-react';
 import { Property, PropertyFilters } from '@/types/property';
@@ -5,11 +6,16 @@ import { mockProperties, mockFilterOptions } from '@/data/mockProperties';
 import { PropertySearch } from './PropertySearch';
 import { FilterDrawer } from './FilterDrawer';
 import { PropertyTable } from './PropertyTable';
+import { QuarterSelector } from './QuarterSelector';
 import { cn } from '@/lib/utils';
 
 export function Dashboard() {
   const [selectedProperties, setSelectedProperties] = useState<Property[]>([]);
   const [filters, setFilters] = useState<PropertyFilters>({});
+  const [selectedPeriod, setSelectedPeriod] = useState<{
+    type: 'quarter' | 'date' | 'month';
+    value: string;
+  }>();
 
   // Filter properties based on current filters
   const filteredProperties = useMemo(() => {
@@ -66,6 +72,12 @@ export function Dashboard() {
         </div>
       </header>
 
+      {/* Quarter/Time Period Selector */}
+      <QuarterSelector
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+      />
+
       {/* Main Content */}
       <div className="dashboard-content">
         <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -109,7 +121,11 @@ export function Dashboard() {
                 </div>
               </div>
             ) : (
-              <PropertyTable properties={selectedProperties} filters={filters} />
+              <PropertyTable 
+                properties={selectedProperties} 
+                filters={filters}
+                selectedPeriod={selectedPeriod}
+              />
             )}
           </div>
 
